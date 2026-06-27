@@ -13,10 +13,10 @@ class Settings(BaseSettings):
     
     # Database Settings
     # Supports SQLite local file by default, or MySQL if specified via env
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./mindmate.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////tmp/mindmate.db" if os.getenv("VERCEL") else "sqlite:///./mindmate.db")
     
     # CORS Settings
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    ALLOWED_ORIGINS: list[str] = ["*"]
     
     # AI Pipeline Models & Vector DB Settings
     VECTOR_DB_TYPE: str = os.getenv("VECTOR_DB_TYPE", "faiss")  # Options: 'faiss', 'chroma', 'numpy'
