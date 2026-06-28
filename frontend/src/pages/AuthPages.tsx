@@ -42,7 +42,14 @@ export const LoginPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || "Invalid username or password.");
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(detail.map((d: any) => d.msg || JSON.stringify(d)).join(", "));
+      } else if (typeof detail === "string") {
+        setError(detail);
+      } else {
+        setError("Invalid username or password.");
+      }
     } finally {
       setLoading(false);
     }
@@ -186,7 +193,14 @@ export const RegisterPage: React.FC = () => {
       setTimeout(() => navigate("/login"), 2500);
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || "Registration failed. Try again.");
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(detail.map((d: any) => d.msg || JSON.stringify(d)).join(", "));
+      } else if (typeof detail === "string") {
+        setError(detail);
+      } else {
+        setError("Registration failed. Please verify your details and try again.");
+      }
     } finally {
       setLoading(false);
     }
