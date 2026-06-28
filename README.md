@@ -138,11 +138,3 @@ npm run dev
 
 ---
 
-## 💡 Key Placement Talking Points (For Interviews)
-
-During placement interviews, be prepared to explain these architectural highlights:
-
-1. **RAG Vector Search with Fallback**: Explain how the RAG service embeds user input queries using `all-MiniLM-L6-v2` and compares it against FAQ vectors. Explain the **TF-IDF + Cosine Similarity fallback** that ensures search functionality remains active even under low-memory, CPU-only, or offline environments.
-2. **FastAPI OAuth2 Form Integration**: Explain that `/auth/login` uses OAuth2 standard format. On the React side, login payloads are explicitly serialized as `application/x-www-form-urlencoded` using `URLSearchParams` to prevent 422 payload errors.
-3. **Dynamic Database Schemas**: Detail how adding or deleting FAQs in the Admin Panel automatically invokes `rag_service.build_index(db)` in real-time, showing that the vector index updates dynamically alongside CRUD operations.
-4. **SQL-Level Aggregations**: Highlight that the Admin Panel Analytics dashboard fetches dynamic SQL-level summaries (`func.count`, `func.avg`) over indexes rather than loading whole tables into memory, showing database efficiency.
