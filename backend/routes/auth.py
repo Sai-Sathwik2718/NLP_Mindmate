@@ -42,14 +42,21 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
         hashed_password=hashed_pwd,
         role=role
     )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    # Log activity
-    log = ActivityLog(user_id=new_user.id, action="register", details=f"User {new_user.username} registered.")
-    db.add(log)
-    db.commit()
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        
+        # Log activity
+        log = ActivityLog(user_id=new_user.id, action="register", details=f"User {new_user.username} registered.")
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database registration error: {str(e)}"
+        )
     
     return new_user
 
