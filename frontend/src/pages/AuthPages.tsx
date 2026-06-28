@@ -47,8 +47,10 @@ export const LoginPage: React.FC = () => {
         setError(detail.map((d: any) => d.msg || JSON.stringify(d)).join(", "));
       } else if (typeof detail === "string") {
         setError(detail);
+      } else if (err.response?.status) {
+        setError(`Server returned error code ${err.response.status}. Please try again.`);
       } else {
-        setError("Invalid username or password.");
+        setError("Network connection failed. Please check your network or server URL and try again.");
       }
     } finally {
       setLoading(false);
@@ -198,8 +200,10 @@ export const RegisterPage: React.FC = () => {
         setError(detail.map((d: any) => d.msg || JSON.stringify(d)).join(", "));
       } else if (typeof detail === "string") {
         setError(detail);
+      } else if (err.response?.status) {
+        setError(`Server returned error code ${err.response.status}. Please check details.`);
       } else {
-        setError("Registration failed. Please verify your details and try again.");
+        setError("Network connection failed. Please check your network or server URL and try again.");
       }
     } finally {
       setLoading(false);

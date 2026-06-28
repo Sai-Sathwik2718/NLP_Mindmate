@@ -17,25 +17,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger("MindMate")
 
+# Guarantee database schemas exist immediately on module import (Essential for Serverless functions)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    logger.error(f"Immediate database initialization warning: {e}")
+
 # Initialize FastAPI App
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="MindMate AI - Student & Campus Mental Health Support Portal (REST APIs)",
     version="1.0.0",
-    docs_url="/docs",  # Auto Swagger Documentation
+    docs_url="/docs",
     redoc_url="/redoc"
 )
 
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Request Timing Middleware (Rate Limiting check & performance logger)
+# Global Exception Handler for clean JSON responses on Serverless errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global exception caught on {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Server Error: {str(exc)}"}
+    )
+
+# Request Timing Middleware
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start_time = time.time()
@@ -44,45 +59,36 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = f"{process_time:.4f}s"
     return response
 
-# Register API Routes
-app.include_router(auth.router, prefix=settings.API_V1_STR)
-app.include_router(chat.router, prefix=settings.API_V1_STR)
-app.include_router(mood.router, prefix=settings.API_V1_STR)
-app.include_router(admin.router, prefix=settings.API_V1_STR)
-app.include_router(feedback.router, prefix=settings.API_V1_STR)
-app.include_router(reports.router, prefix=settings.API_V1_STR)
-app.include_router(notifications.router, prefix=settings.API_V1_STR)
+# Register API Routes with multiple prefix fallbacks for Vercel/Cloud rewrites
+routers = [auth.router, chat.router, mood.router, admin.router, feedback.router, reports.router, notifications.router]
+
+for r in routers:
+    app.include_router(r, prefix=settings.API_V1_STR) # /api/v1
+    app.include_router(r, prefix="/api")              # /api
+    app.include_router(r, prefix="")                  # / (root relative)
 
 @app.on_event("startup")
 def startup_event():
-    """
-    On Startup:
-    1. Initialize the SQLite/MySQL database schemas.
-    2. Build/initialize the NLP pipelines (lazy load HF if available).
-    3. Index FAQs into Sentence Transformer (or TF-IDF) RAG embeddings space.
-    """
-    logger.info("Initializing database schemas...")
-    Base.metadata.create_all(bind=engine)
-    
-    logger.info("Pre-heating NLP classifier pipelines...")
-    # Trigger lazy load
-    nlp_pipeline.load_hf_models()
-    rag_service.load_model()
-    
-    logger.info("Building RAG FAQs Vector Index...")
-    db = SessionLocal()
+    logger.info("Verifying database schemas on startup...")
     try:
-        rag_service.build_index(db)
+        Base.metadata.create_all(bind=engine)
     except Exception as e:
-        logger.error(f"Error during FAQ indexing on startup: {e}")
-    finally:
-        db.close()
+        logger.error(f"Error initializing database schemas on startup: {e}")
         
-    logger.info("MindMate AI Backend started successfully!")
+    try:
+        nlp_pipeline.load_hf_models()
+        rag_service.load_model()
+        db = SessionLocal()
+        rag_service.build_index(db)
+        db.close()
+    except Exception as e:
+        logger.error(f"Background NLP pre-heating warning: {e}")
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/v1")
 def health_check():
-    """Verify backend health, connection parameters and NLP model statuses."""
+    """Verify backend health and API status."""
     return JSONResponse(
         content={
             "status": "healthy",
